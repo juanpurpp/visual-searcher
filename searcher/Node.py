@@ -1,10 +1,12 @@
+import copy
+
 class Node:
   def __init__(self, state, father, last_branch):
-    self.state = state
+    self.state = state[:]
     self.father = father
     self.last_branch = last_branch
   def getState(self):
-    return self.state
+    return copy.deepcopy(self.state)
   
   def getFather(self):
     return self.father
@@ -21,13 +23,12 @@ class Node:
     if newRow >= len(self.state): return False
     if newCol >= len(self.state[0]): return False
     if self.state[newRow][newCol] == 0: return False
-    if self.state[newRow][newCol] == 'o': return False
     return True
   
   def getNewStateFromMovement(self, newRow, newCol):
     row, col = self.getPositionCoords() # coords of current position
-    new_state = self.state
-    new_state[row][col] = 'o' #free block
+    new_state = copy.deepcopy(self.state)
+    new_state[row][col] = 1 #free block
     new_state[newRow][newCol] = 'i'
     return new_state
 
@@ -43,13 +44,15 @@ class Node:
     #down
     if self.movementDoesntBreakRules(row + 1, col):
       children.append(self.getNewStateFromMovement(row + 1, col))
-        #right
+    #left
     if self.movementDoesntBreakRules(row, col-1):
       children.append(self.getNewStateFromMovement(row, col-1))
     return children
+  
   def isGoal(self, goal_coords):
     goal_row, goal_col = goal_coords
     if self.state[goal_row][goal_col] == 'i': return True
     else: return False
 
-    
+  def getLastBranch(self):
+    return self.last_branch
