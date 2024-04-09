@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import HTMLResponse
 from reactpy import component, html, run, hooks
 from reactpy.backend.fastapi import configure
 
@@ -8,9 +9,12 @@ from components.Options import Options
 from searcher.Searcher import Searcher
 
 import asyncio
+from pybars import Compiler
+compiler = Compiler()
 
+from websockets.sync.client import connect
 app = FastAPI()
-problem02 = [
+problem123 = [
   ['i', 0 , 0 ,'g'],
   [ 1 , 1 , 0 , 1 ],
   [ 0 , 1 , 1 , 1 ],
@@ -25,7 +29,7 @@ problem12= [
     [1, 1, 1, 1, 1, 'g']
 ]
 
-problem2 = [
+problem = [
   ['i', 0, 1, 0, 1, 0, 1, 1, 1, 'g'],
   [1, 1, 1, 0, 1, 0, 0, 0, 0, 1],
   [1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
@@ -58,7 +62,7 @@ problem2 = [
     [1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1],
 
 ]
-problem = [
+problem1 = [
     ['i', 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
     [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
@@ -90,46 +94,37 @@ problem = [
   ]
 agent = Searcher(problem[:])
 
-@component
-def App():
-  state, setState = hooks.use_state(problem[:])
+app = FastAPI()
 
-  event = agent.getIterationEvent()
+hbs = open('./template.hbs').read()
+# Add any special helpers
+def _list(this, options):
+  result = [u'<div class="flex flex-col justify-center items-center">']
+  for nrow, row in enumerate(problem):
+    result.append(u'<div class="flex flex-row">')
+    for ncol, val in enumerate(row):
+      itemId = 'i-'+str(nrow)+'-'+str(ncol)
+      if val == 0: result.append(u'<div id='+itemId+ ' class="w-4 h-4 bg-gray-500" > </div>')
+      if val == 1: result.append(u'<div id='+itemId+ ' class="w-4 h-4 bg-slate-100" > </div>')
+      if val == 'i': result.append(u'<div id='+itemId+ ' class="w-4 h-4 bg-blue-400" > </div>')
+      if val == 'g': result.append(u'<div id='+itemId+ ' class="w-4 h-4 bg-red-400" > </div>')
+    result.append(u'</div>')  
+  result.append(u'</div>')
+  return result
+helpers = {'list': _list}
 
-  def effect():
-    async def onIteration(new_state):
-      setState(new_state)
-      for i, row in enumerate(new_state):
-        for j, value in enumerate(row):
-          print(value, end='')
-        print('\n');
-      print('--------------------------------------------------------')
-    event.addListener(onIteration)
-    def remover():
-      event.removeListener(onIteration)
-    return remover
-  hooks.use_effect(
-    effect,[]
-  )
+template = compiler.compile(hbs)
+html = template({},helpers=helpers)
 
-  async def onStart(e):
-    await agent.startDepth()
-    print('termina')
-  return html._(
-    html.link(
-      {
-        "href": "https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css",
-        "rel": "stylesheet",
-      }
-    ),
-    html.div(
-      {"className": "flex flex-col justify-start items-center"},
-      html.h1({"className": "text-2xl text-slate-800 font-semibold mb-4"},"Bienvenido a Laberinto Seacher"),
-      html.div({"className": "w-full flex flex-row justify-center items-start"},
-        Maze(state),
-        Options(onStart),
-      )
-    )
-  )
 
-configure(app,App)
+@app.get("/")
+async def get():
+  return HTMLResponse(html)
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+  await websocket.accept()
+  while True:
+    data = await websocket.receive_text()
+    await websocket.send_text(f"Message text was: {data}")
