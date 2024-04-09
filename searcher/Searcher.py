@@ -1,4 +1,5 @@
 from searcher.Node import Node
+import json
 import time
 import sys
 import asyncio
@@ -37,37 +38,38 @@ class Searcher:
       if self.isIdentical(A,B): return True
     return False
   
-  async def startLinearDepth(self,node):
+  async def startLinearDepth(self,node, delay=0.2):
     stack = []
     saved = []
     current = Node(node.getState(), None, None)
     while not current.isGoal(self.goal_coords):
-      await self.iteration.trigger([current.getState()])
-      print('save1')
-      print(saved)
-      print('to saves')
-      print(current.getState())
+      row,col = current.getPositionCoords()
+      old = current.getFather()
+      if old != None : oldRow, oldCol = old.getPositionCoords()
+      else: 
+        oldRow = None
+        oldCol = None
+      await self.iteration.trigger([json.dumps({"col":col, "row": row, "oldRow": oldRow , "oldCol": oldCol})])
+      
       saved.append(current.getState().copy())
-      print('sav2e')
-      print(saved)
+
       choices = current.getChoices()
-      print('sav3e')
-      print(saved)
-      print('choices len')
-      print(len(choices))
- 
+
+      await asyncio.sleep(delay)
       for choice in choices:
-        print('save')
-        print(saved)
-        print(self.isSaved(saved,choice))
         if not self.isSaved(saved,choice) : stack.append(choice)
       current = Node(stack.pop(), current, current if len(choices)>1 else current.getLastBranch())
-    await self.iteration.trigger([current.getState()])
+    row,col = current.getPositionCoords()
+    old = current.getFather()
+    if old != None : oldRow, oldCol = old.getPositionCoords()
+    else: 
+      oldRow = None
+      oldCol = None
+    await self.iteration.trigger([json.dumps({"col":col, "row": row, "oldRow": oldRow , "oldCol": oldCol, "finished": True})])
     return current
 
-  async def startDepth(self):
-    return await self.startLinearDepth(self.current)
-
+  async def startDepth(self, delay):
+    return await self.startLinearDepth(self.current, delay)
   
   def useAgent(self, onIteration):
     def effect():

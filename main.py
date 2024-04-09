@@ -7,7 +7,7 @@ from components.Maze import Maze
 from components.Options import Options
 
 from searcher.Searcher import Searcher
-
+import json
 import asyncio
 from pybars import Compiler
 compiler = Compiler()
@@ -41,7 +41,7 @@ problem = [
   [1, 1, 1, 0, 1, 1, 1, 1, 0, 1],
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
-problem2 = [
+problem1 = [
     ['i', 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
     [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
@@ -62,7 +62,7 @@ problem2 = [
     [1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1],
 
 ]
-problem1 = [
+problem12 = [
     ['i', 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
     [1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
@@ -125,6 +125,13 @@ async def get():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
   await websocket.accept()
+  event = agent.getIterationEvent()
+  async def sendIteration(response):
+    await websocket.send_json(response)
   while True:
-    data = await websocket.receive_text()
-    await websocket.send_text(f"Message text was: {data}")
+    data = await websocket.receive_json()
+    print(data)
+    if(data['action'] == 'start'):
+      event.addListener(sendIteration)
+      await agent.startDepth(data['delay'])
+    
